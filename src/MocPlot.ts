@@ -47,6 +47,8 @@ export class MocPlot {
      * Canvas styles
      */
     this.canvas.style.cursor = "grab";
+
+    this.parent.appendChild(this.canvas);
     this.ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
 
     this.resizeCanvas();
@@ -287,7 +289,7 @@ export class MocPlot {
       tickLabelOffset: 8,
       textAlign: "center",
       textBaseline: "top",
-      grid: this.options?.grid?.show,
+      grid: this.options?.grid?.show !== false,
     });
 
     this.drawTicks(ctx, {
@@ -302,7 +304,7 @@ export class MocPlot {
       tickLabelOffset: 8,
       textAlign: "right",
       textBaseline: "middle",
-      grid: this.options?.grid?.show,
+      grid: this.options?.grid?.show !== false,
     });
 
     ctx.strokeStyle = this.options?.axis?.color ?? "#333";
@@ -692,11 +694,11 @@ export class MocPlot {
         ...options,
       },
     });
-    if (options.discardInterval) {
+    if (options?.discardInterval) {
       /**
        * Clear existing interval if it exists
        */
-      clearInterval(buffer.discardInterval);
+      clearInterval(buffer?.discardInterval);
     }
 
     /**
@@ -774,7 +776,8 @@ export class MocPlot {
    */
   onMouseDown(event: MouseEvent): void {
     this.isDragging = true;
-    this.dragStart = { x: event.clientX, y: event.clientY };
+    // this.dragStart = { x: event.clientX, y: event.clientY };
+    this.lastMousePos = { x: event.clientX, y: event.clientY };
     this.canvas.style.cursor = "grabbing";
 
     if (this.options?.follow?.disableOnInteraction) {
@@ -788,8 +791,8 @@ export class MocPlot {
   onMouseMove(event: MouseEvent): void {
     if (this.isDragging && this.bounds) {
       const delta = {
-        x: event.clientX - this.dragStart.x,
-        y: event.clientY - this.dragStart.y,
+        x: event.clientX - this.lastMousePos.x,
+        y: event.clientY - this.lastMousePos.y,
       };
 
       const range = {
