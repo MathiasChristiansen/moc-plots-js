@@ -595,7 +595,7 @@ export class MocPlot {
         ctx.strokeStyle = line.color || "black";
         ctx.lineWidth = line.width || 2;
 
-        const step = (this.options?.function?.stepScalar ?? 1) / scale.x;
+        const step = (line?.stepScalar ?? 1) / scale.x;
         for (
           let x = bounds.x.min + nullPosition.x;
           x < bounds.x.max + nullPosition.x;
@@ -606,8 +606,16 @@ export class MocPlot {
             x: x - nullPosition.x,
             y: y - nullPosition.y,
           };
-          if (adjusted.x < bounds.x.min || adjusted.x > bounds.x.max) continue;
-          if (adjusted.y < bounds.y.min || adjusted.y > bounds.y.max) continue;
+          if (
+            adjusted.x < bounds.x.min - scale.x ||
+            adjusted.x > bounds.x.max + scale.x
+          )
+            continue;
+          if (
+            adjusted.y < bounds.y.min - scale.y ||
+            adjusted.y > bounds.y.max + scale.y
+          )
+            continue;
 
           const canvasPosition = {
             x: (adjusted.x - bounds.x.min) * scale.x,
@@ -1120,6 +1128,9 @@ export class MocPlot {
    * Render a configuration button.
    */
   renderConfig(): void {
+    /**
+     * This is temporary, we'll create a separate component for this.
+     */
     this.parent.style.position = "relative";
 
     const configButton = document.createElement("button");
@@ -1131,7 +1142,6 @@ export class MocPlot {
     this.parent.appendChild(configButton);
 
     configButton.addEventListener("click", () => {
-      console.log(this);
       const overlay = document.createElement("div");
       overlay.style.animationDuration = "0.3s";
       overlay.style.opacity = "0";
@@ -1158,6 +1168,31 @@ export class MocPlot {
       configPanel.style.height = "100%";
       configPanel.style.overflow = "auto";
 
+      const axisConfig = document.createElement("div");
+      const axisLabel = document.createElement("label");
+      axisLabel.innerText = "Axis Color";
+      axisConfig.appendChild(axisLabel);
+      const axisColor = document.createElement("input");
+      axisColor.type = "color";
+      axisColor.value = this.options?.axis?.color ?? "#333";
+
+      axisColor.addEventListener("input", () => {
+        this.update({ axis: { color: axisColor.value } });
+      });
+      axisConfig.appendChild(axisColor);
+
+      const gridConfig = document.createElement("div");
+      const gridLabel = document.createElement("label");
+      gridLabel.innerText = "Grid Color";
+      gridConfig.appendChild(gridLabel);
+      const gridColor = document.createElement("input");
+      gridColor.type = "color";
+      gridColor.value = this.options?.grid?.color ?? "#e0e0e0";
+      gridColor.addEventListener("input", () => {
+        this.update({ grid: { color: gridColor.value } });
+      });
+      gridConfig.appendChild(gridColor);
+
       const closeButton = document.createElement("button");
       closeButton.innerText = "Close";
       closeButton.style.position = "absolute";
@@ -1179,6 +1214,8 @@ export class MocPlot {
 
       overlay.appendChild(configPanel);
       configPanel.appendChild(closeButton);
+      configPanel.appendChild(axisConfig);
+      configPanel.appendChild(gridConfig);
 
       document.body.appendChild(overlay);
 
