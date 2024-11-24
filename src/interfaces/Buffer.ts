@@ -6,8 +6,9 @@ export interface Buffer {
   visible?: boolean;
   line?: { width?: number };
   lines?: BufferLine[];
+  points: BufferPoint[];
   parametrics?: BufferParametricFunction[];
-  point?: { size?: number; shape?: "circle" | "square" };
+  point?: { size?: number; shape?: "circle" | "square"};
   area?: { fillOpacity?: number };
   bar?: { width?: number };
   stack?: string;
@@ -45,4 +46,14 @@ export interface BufferParametricFunction {
   tMax?: number;
   steps?: number;
   label?: string;
+}
+
+export interface BufferPoint {
+  x: number;
+  y: number;
+  color?: string;
+  size?: number;
+  shape?: "circle" | "square";
+  label?: string;
+  labelOffset: { x?: number; y?: number };
 }

@@ -1,4 +1,4 @@
-import { Buffer } from "./interfaces/Buffer";
+import { Buffer, BufferPoint } from "./interfaces/Buffer";
 import { PlotOptions } from "./interfaces/Options";
 
 export class MocPlot {
@@ -16,6 +16,13 @@ export class MocPlot {
   onFollowStartFunc?: () => void; // Callback for when following starts
   onFollowStopFunc?: () => void; // Callback for when following stops
 
+  renderMode: "auto" | "manual" = "auto";
+
+  renderDispatch: { [key: string]: () => void } = {
+    auto: () => this.render(),
+    manual: () => {},
+  };
+
   constructor(
     parent: HTMLElement,
     buffers: Map<string, Buffer> = new Map<string, Buffer>(),
@@ -23,7 +30,16 @@ export class MocPlot {
   ) {
     this.parent = parent;
     this.buffers = buffers;
-    this.options = options || {};
+    this.options = options || ({} as any);
+
+    /**
+     * Defaults
+     */
+    /**
+     * Render options
+     */
+    // this.options.render = this.options.render ?? {};
+    // this.options.render.mode = this.options.render?.mode ?? "auto";
 
     this.normalizeBounds = this.options.normalizeBounds ?? false;
     this.bounds = this.options.bounds ?? undefined;
@@ -35,6 +51,8 @@ export class MocPlot {
     this.lastMousePos = { x: 0, y: 0 };
 
     this.canvas = document.createElement("canvas");
+
+    this.canvas.style.userSelect = "none";
 
     this.init();
   }
@@ -56,10 +74,17 @@ export class MocPlot {
     /**
      * Create function to handle resize so we can clean it up later
      */
-    window.addEventListener("resize", () => {
+    const debounceResize = this.debounce(() => {
       this.resizeCanvas();
-      this.render();
-    });
+      // this.renderDispatch[this.renderMode]();
+      if (this.renderMode === "auto") {
+        this.render();
+      }
+    }, 100);
+    window.addEventListener(
+      "resize",
+      debounceResize as (this: Window, ev: UIEvent) => any
+    );
 
     /**
      * Mouse event listeners
@@ -110,7 +135,11 @@ export class MocPlot {
       this.renderConfig();
     }
 
-    this.render();
+    // this.render();
+    // this.renderDispatch[this.renderMode]();
+    if (this.renderMode === "auto") {
+      this.render();
+    }
   }
 
   /**
@@ -120,7 +149,11 @@ export class MocPlot {
     const followFunc = () => {
       if (this.isDragging) return;
       this.updateBoundsToLatestData();
-      this.render();
+      // this.render();
+      // this.renderDispatch[this.renderMode]();
+      if (this.renderMode === "auto") {
+        this.render();
+      }
     };
 
     if (this.followTimer) {
@@ -465,6 +498,7 @@ export class MocPlot {
   drawBuffer(buffer: Buffer): void {
     const data = buffer.data;
     const lines = buffer.lines;
+    const points: BufferPoint[] = buffer.points;
     const parametrics = buffer.parametrics;
     if (!data || data.length === 0) return;
 
@@ -510,9 +544,18 @@ export class MocPlot {
     }
 
     const scale = {
-      x: this.canvas.width / range.x,
-      y: this.canvas.height / range.y,
+      x: 1,
+      y: 1,
     };
+
+    if (range.x !== Infinity || range.y !== Infinity) {
+      // scale = {
+      //   x: this.canvas.width / range.x,
+      //   y: this.canvas.height / range.y,
+      // }
+      scale.x = this.canvas.width / range.x;
+      scale.y = this.canvas.height / range.y;
+    }
 
     ctx.beginPath();
     ctx.moveTo(
@@ -552,7 +595,7 @@ export class MocPlot {
         ctx.strokeStyle = line.color || "black";
         ctx.lineWidth = line.width || 2;
 
-        const step = (this.options?.function?.stepScalar || 1) / scale.x;
+        const step = (this.options?.function?.stepScalar ?? 1) / scale.x;
         for (
           let x = bounds.x.min + nullPosition.x;
           x < bounds.x.max + nullPosition.x;
@@ -560,11 +603,11 @@ export class MocPlot {
         ) {
           const y = line.func(x);
           const adjusted = {
-            x: x - nullPosition.x - bounds.x.min,
-            y: y - nullPosition.y - bounds.y.min,
+            x: x - nullPosition.x,
+            y: y - nullPosition.y,
           };
-          if (adjusted.x < 0 || adjusted.x > this.canvas.width) continue;
-          if (adjusted.y < 0 || adjusted.y > this.canvas.height) continue;
+          if (adjusted.x < bounds.x.min || adjusted.x > bounds.x.max) continue;
+          if (adjusted.y < bounds.y.min || adjusted.y > bounds.y.max) continue;
 
           const canvasPosition = {
             x: (adjusted.x - bounds.x.min) * scale.x,
@@ -578,6 +621,41 @@ export class MocPlot {
           }
         }
         ctx.stroke();
+      }
+    }
+
+    /**
+     * Draw points
+     */
+    if (points && Array.isArray(points)) {
+      for (let point of points) {
+        if (typeof point.x !== "number" || typeof point.y !== "number")
+          continue;
+
+        ctx.beginPath();
+        ctx.fillStyle = point.color || "black";
+        ctx.arc(
+          (point.x - nullPosition.x - bounds.x.min) * scale.x,
+          this.canvas.height -
+            (point.y - nullPosition.y - bounds.y.min) * scale.y,
+          point.size || 2,
+          0,
+          2 * Math.PI
+        );
+        ctx.fill();
+
+        if (point.label) {
+          ctx.font = "12px Arial";
+          ctx.fillStyle = point.color || "black";
+          ctx.fillText(
+            point.label,
+            (point.x - nullPosition.x - bounds.x.min) * scale.x +
+              (point?.labelOffset?.x ?? 5),
+            this.canvas.height -
+              (point.y - nullPosition.y - bounds.y.min) * scale.y +
+              (point?.labelOffset?.y ?? -5)
+          );
+        }
       }
     }
 
@@ -660,7 +738,11 @@ export class MocPlot {
     }
 
     this.buffers.set(key, { ...originalBuffer, ...buffer });
-    this.render();
+    // this.render();
+    // this.renderDispatch[this.renderMode]();
+    if (this.renderMode === "auto") {
+      this.render();
+    }
   }
 
   /**
@@ -677,7 +759,11 @@ export class MocPlot {
       ...(this.options.bounds ?? {}),
     } as any;
 
-    this.render();
+    // this.render();
+    // this.renderDispatch[this.renderMode]();
+    if (this.renderMode === "auto") {
+      this.render();
+    }
   }
 
   /**
@@ -715,7 +801,11 @@ export class MocPlot {
       }
     }, buffer.discardOptions?.interval ?? 1000);
 
-    this.render();
+    // this.render();
+    // this.renderDispatch[this.renderMode]();
+    if (this.renderMode === "auto") {
+      this.render();
+    }
   }
 
   /**
@@ -812,7 +902,11 @@ export class MocPlot {
 
       this.lastMousePos = { x: event.clientX, y: event.clientY };
 
-      this.render();
+      // this.render();
+      // this.renderDispatch[this.renderMode]();
+      if (this.renderMode === "auto") {
+        this.render();
+      }
     }
   }
 
@@ -844,9 +938,11 @@ export class MocPlot {
       y: this.bounds.y.max - this.bounds.y.min,
     };
 
+    const boundingRect = this.canvas.getBoundingClientRect();
+
     const mousePosition = {
-      x: event.clientX,
-      y: event.clientY,
+      x: event.clientX - boundingRect.left,
+      y: event.clientY - boundingRect.top,
     };
 
     const dataPosition = {
@@ -865,7 +961,11 @@ export class MocPlot {
     this.bounds.y.max =
       dataPosition.y + (this.bounds.y.max - dataPosition.y) * factor;
 
-    this.render();
+    // this.render();
+    // this.renderDispatch[this.renderMode]();
+    if (this.renderMode === "auto") {
+      this.render();
+    }
 
     if (this.options?.follow?.disableOnInteraction) {
       this.stopFollowingLatest();
@@ -887,6 +987,10 @@ export class MocPlot {
     this.bounds = this.computeBounds();
     this.resizeCanvas();
     this.render();
+    // this.renderDispatch[this.options.render.mode]();
+    if (this.renderMode === "auto") {
+      this.render();
+    }
   }
 
   /**
@@ -1005,7 +1109,11 @@ export class MocPlot {
     this.bounds.y.min = focusPoint.y - newRange.y / 2;
     this.bounds.y.max = focusPoint.y + newRange.y / 2;
 
-    this.render();
+    // this.render();
+    // this.renderDispatch[this.renderMode]();
+    if (this.renderMode === "auto") {
+      this.render();
+    }
   }
 
   /**
@@ -1020,10 +1128,115 @@ export class MocPlot {
     configButton.style.top = "8px";
     configButton.style.right = "8px";
 
+    this.parent.appendChild(configButton);
+
     configButton.addEventListener("click", () => {
       console.log(this);
-    });
+      const overlay = document.createElement("div");
+      overlay.style.animationDuration = "0.3s";
+      overlay.style.opacity = "0";
+      overlay.style.position = "fixed";
+      overlay.style.top = "0";
+      overlay.style.left = "0";
+      overlay.style.width = "100vw";
+      overlay.style.height = "100vh";
+      overlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+      overlay.style.zIndex = "1000";
+      overlay.style.display = "flex";
+      overlay.style.justifyContent = "center";
+      overlay.style.alignItems = "center";
 
-    this.parent.appendChild(configButton);
+      const configPanel = document.createElement("div");
+      configPanel.style.position = "relative";
+      configPanel.style.backgroundColor = "white";
+      configPanel.style.padding = "16px";
+      configPanel.style.borderRadius = "2px";
+      configPanel.style.boxShadow = "0 0 10px rgba(0, 0, 0, 0.2)";
+      configPanel.style.maxWidth = "400px";
+      configPanel.style.width = "100%";
+      configPanel.style.maxHeight = "80vh";
+      configPanel.style.height = "100%";
+      configPanel.style.overflow = "auto";
+
+      const closeButton = document.createElement("button");
+      closeButton.innerText = "Close";
+      closeButton.style.position = "absolute";
+      closeButton.style.top = "8px";
+      closeButton.style.right = "8px";
+      closeButton.style.padding = "8px";
+      closeButton.style.border = "none";
+      closeButton.style.borderRadius = "2px";
+      closeButton.style.backgroundColor = "#f0f0f0";
+      closeButton.style.cursor = "pointer";
+
+      closeButton.addEventListener("click", () => {
+        overlay.remove();
+      });
+
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) overlay.remove();
+      });
+
+      overlay.appendChild(configPanel);
+      configPanel.appendChild(closeButton);
+
+      document.body.appendChild(overlay);
+
+      overlay.style.opacity = "1";
+    });
+  }
+
+  setRenderMode(mode: "auto" | "manual"): void {
+    if (!["auto", "manual"].includes(mode)) {
+      console.error(
+        `Invalid render mode (${mode}). Must be 'auto' or 'manual'.`
+      );
+      return;
+    }
+    this.renderMode = mode;
+  }
+
+  private debounce(fn: Function, delay: number): Function {
+    let timeout: any;
+    return (...args: any[]) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fn(...args), delay);
+    };
+  }
+
+  public getMousePlotPosition(event: MouseEvent): {
+    x: number;
+    y: number;
+    scale: { x: number; y: number };
+  } {
+    if (!this.bounds) return { x: 0, y: 0, scale: { x: 1, y: 1 } };
+
+    const range = {
+      x: this.bounds.x.max - this.bounds.x.min,
+      y: this.bounds.y.max - this.bounds.y.min,
+    };
+
+    const scale = {
+      x: this.canvas.width / range.x,
+      y: this.canvas.height / range.y,
+    };
+
+    const nullPosition = {
+      x: this.bounds.x.min,
+      y: this.bounds.y.min,
+    };
+
+    const boundingRect = this.canvas.getBoundingClientRect();
+
+    const mousePosition = {
+      x: event.clientX - boundingRect.left,
+      y: event.clientY - boundingRect.top,
+    };
+
+    return {
+      x: nullPosition.x + (mousePosition.x / this.canvas.width) * range.x,
+      y: nullPosition.y + (1 - mousePosition.y / this.canvas.height) * range.y,
+      scale,
+    };
   }
 }

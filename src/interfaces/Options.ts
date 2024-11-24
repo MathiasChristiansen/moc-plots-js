@@ -24,4 +24,7 @@ export interface PlotOptions {
   };
   function?: { stepScalar?: number };
   config?: { enabled?: boolean };
+  // render: {
+  //   mode: "auto" | "manual";
+  // };
 }
