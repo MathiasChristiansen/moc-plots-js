@@ -697,10 +697,10 @@ export class MocPlot {
           };
 
           if (
-            adjusted.x < bounds.x.min ||
-            adjusted.x > bounds.x.max ||
-            adjusted.y < bounds.y.min ||
-            adjusted.y > bounds.y.max
+            adjusted.x < bounds.x.min - scale.x ||
+            adjusted.x > bounds.x.max + scale.x ||
+            adjusted.y < bounds.y.min - scale.y ||
+            adjusted.y > bounds.y.max + scale.y
           ) {
             continue;
           }
@@ -887,7 +887,8 @@ export class MocPlot {
    * Handle mouse move events for dragging.
    */
   onMouseMove(event: MouseEvent): void {
-    if (this.isDragging && this.bounds) {
+    if (!this.bounds) this.bounds = this.computeBounds();
+    if (this.isDragging) {
       const delta = {
         x: event.clientX - this.lastMousePos.x,
         y: event.clientY - this.lastMousePos.y,
@@ -1245,8 +1246,17 @@ export class MocPlot {
     x: number;
     y: number;
     scale: { x: number; y: number };
+    plotOffsets: Record<string, { x: number; y: number }>;
   } {
-    if (!this.bounds) return { x: 0, y: 0, scale: { x: 1, y: 1 } };
+    const plotOffsets: any = {};
+
+    for (let [key, buffer] of this.buffers.entries()) {
+      plotOffsets[key] = {
+        x: buffer.null?.x ?? 0,
+        y: buffer.null?.y ?? 0,
+      };
+    }
+    if (!this.bounds) this.bounds = this.computeBounds();
 
     const range = {
       x: this.bounds.x.max - this.bounds.x.min,
@@ -1274,6 +1284,7 @@ export class MocPlot {
       x: nullPosition.x + (mousePosition.x / this.canvas.width) * range.x,
       y: nullPosition.y + (1 - mousePosition.y / this.canvas.height) * range.y,
       scale,
+      plotOffsets,
     };
   }
 }
