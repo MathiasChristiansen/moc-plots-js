@@ -102,6 +102,20 @@ export class MocPlot {
     this.canvas.addEventListener("wheel", (event) => this.onWheel(event));
 
     /**
+     * Touch event listeners
+     */
+    this.canvas.addEventListener("touchstart", (event) =>
+      this.onTouchStart(event)
+    );
+    this.canvas.addEventListener("touchmove", (event) =>
+      this.onTouchMove(event)
+    );
+    this.canvas.addEventListener("touchend", (event) => this.onTouchEnd(event));
+    this.canvas.addEventListener("touchcancel", (event) =>
+      this.onTouchEnd(event)
+    );
+
+    /**
      * Handle bounds
      */
     if (
@@ -746,6 +760,9 @@ export class MocPlot {
     }
 
     this.buffers.set(key, { ...originalBuffer, ...buffer });
+    if (buffer?.discardOptions) {
+      this.setBufferDiscardOptions(key, this.buffers.get(key)?.discardOptions);
+    }
     // this.render();
     // this.renderDispatch[this.renderMode]();
     if (this.renderMode === "auto") {
@@ -788,7 +805,7 @@ export class MocPlot {
         ...options,
       },
     });
-    if (options?.discardInterval) {
+    if (buffer?.discardInterval) {
       /**
        * Clear existing interval if it exists
        */
@@ -798,17 +815,18 @@ export class MocPlot {
     /**
      * Set new interval for discarding data
      */
-    buffer.discardInterval = setInterval(() => {
-      let buffer = this.buffers.get(key);
-      if (!buffer || !buffer.maxDataLength) return;
-      if (buffer?.data?.length > buffer?.maxDataLength) {
-        this.buffers.set(key, {
-          ...buffer,
-          data: buffer.data.slice(buffer.data.length - buffer.maxDataLength),
-        });
-      }
-    }, buffer.discardOptions?.interval ?? 1000);
-
+    if (buffer?.maxDataLength) {
+      buffer.discardInterval = setInterval(() => {
+        let buffer = this.buffers.get(key);
+        if (!buffer || !buffer.maxDataLength) return;
+        if (buffer?.data?.length > buffer?.maxDataLength) {
+          this.buffers.set(key, {
+            ...buffer,
+            data: buffer.data.slice(buffer.data.length - buffer.maxDataLength),
+          });
+        }
+      }, buffer.discardOptions?.interval ?? 1000);
+    }
     // this.render();
     // this.renderDispatch[this.renderMode]();
     if (this.renderMode === "auto") {
@@ -987,6 +1005,86 @@ export class MocPlot {
   onMouseLeave(event: MouseEvent): void {
     this.isDragging = false;
     this.canvas.style.cursor = "grab";
+  }
+
+  /**
+   * Handle touch start events for dragging.
+   */
+  onTouchStart(event: TouchEvent): void {
+    this.isDragging = true;
+    this.lastMousePos = {
+      x: event.touches[0].clientX,
+      y: event.touches[0].clientY,
+    };
+    this.canvas.style.cursor = "grabbing";
+
+    if (this.options?.follow?.disableOnInteraction) {
+      this.stopFollowingLatest();
+    }
+  }
+
+  /**
+   * Handle touch move events for dragging.
+   */
+  onTouchMove(event: TouchEvent): void {
+    event.preventDefault();
+    if (!this.bounds) this.bounds = this.computeBounds();
+    if (this.isDragging) {
+      const delta = {
+        x: event.touches[0].clientX - this.lastMousePos.x,
+        y: event.touches[0].clientY - this.lastMousePos.y,
+      };
+
+      const range = {
+        x: this.bounds.x.max - this.bounds.x.min,
+        y: this.bounds.y.max - this.bounds.y.min,
+      };
+
+      const deltaData = {
+        x: (-delta.x * range.x) / this.canvas.width,
+        y: (delta.y * range.y) / this.canvas.height,
+      };
+
+      this.bounds.x.min += deltaData.x;
+      this.bounds.x.max += deltaData.x;
+      this.bounds.y.min += deltaData.y;
+      this.bounds.y.max += deltaData.y;
+
+      this.lastMousePos = {
+        x: event.touches[0].clientX,
+        y: event.touches[0].clientY,
+      };
+
+      // this.render();
+      // this.renderDispatch[this.renderMode]();
+      if (this.renderMode === "auto") {
+        this.render();
+      }
+    }
+  }
+
+  /**
+   * Handle touch end events for dragging.
+   */
+  onTouchEnd(event: TouchEvent): void {
+    this.isDragging = false;
+    this.canvas.style.cursor = "grab";
+
+    if (this.options?.follow?.disableOnInteraction) {
+      this.startFollowingLatest();
+    }
+  }
+
+  /**
+   * Handle touch cancel events.
+   */
+  onTouchCancel(event: TouchEvent): void {
+    this.isDragging = false;
+    this.canvas.style.cursor = "grab";
+
+    if (this.options?.follow?.disableOnInteraction) {
+      this.startFollowingLatest();
+    }
   }
 
   /**

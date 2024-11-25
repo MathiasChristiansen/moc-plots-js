@@ -26,7 +26,11 @@ export interface Buffer {
   subtitle?: { text?: string; style?: object };
   unit?: { text?: string; style?: object };
   maxDataLength?: number;
-  discardOptions?: any;
+  discardOptions?:
+    | any
+    | {
+        interval?: number;
+      };
   discardInterval?: NodeJS.Timeout | undefined;
   null?: { x?: number; y?: number };
 }
