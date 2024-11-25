@@ -24,6 +24,12 @@ export interface PlotOptions {
   };
   function?: { stepScalar?: number };
   config?: { enabled?: boolean };
+  localBufferOption: Record<
+    string,
+    {
+      visible?: boolean;
+    }
+  >;
   // render: {
   //   mode: "auto" | "manual";
   // };

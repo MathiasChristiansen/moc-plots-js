@@ -273,7 +273,7 @@ export class MocPlot {
     this.renderAxes();
 
     for (let [key, buffer] of this.buffers.entries()) {
-      this.drawBuffer(buffer);
+      this.drawBuffer(key, buffer);
     }
   }
 
@@ -509,7 +509,12 @@ export class MocPlot {
   /**
    * Draw a specific buffer on the plot.
    */
-  drawBuffer(buffer: Buffer): void {
+  drawBuffer(key: string, buffer: Buffer): void {
+    if (
+      buffer.visible === false ||
+      this.options?.localBufferOption?.[key]?.visible === false
+    )
+      return;
     const data = buffer.data;
     const lines = buffer.lines;
     const points: BufferPoint[] = buffer.points;
@@ -1311,6 +1316,61 @@ export class MocPlot {
         if (event.target === overlay) overlay.remove();
       });
 
+      /**
+       * Loop over buffers and create config options for each
+       */
+      this.iterateBuffers((key, buffer) => {
+        const bufferConfig = document.createElement("div");
+        bufferConfig.style.marginTop = "16px";
+        bufferConfig.style.marginBottom = "16px";
+        bufferConfig.style.paddingTop = "16px";
+        bufferConfig.style.paddingBottom = "16px";
+        bufferConfig.style.border = "1px solid #f0f0f0";
+
+        const bufferLabel = document.createElement("label");
+        bufferLabel.innerText = key;
+        bufferConfig.appendChild(bufferLabel);
+
+        const bufferColor = document.createElement("input");
+        bufferColor.type = "color";
+        bufferColor.value = buffer.color || "#333";
+        bufferColor.addEventListener("input", () => {
+          this.updateBuffer(key, { color: bufferColor.value });
+        });
+        bufferConfig.appendChild(bufferColor);
+
+        const bufferVisible = document.createElement("input");
+        bufferVisible.type = "checkbox";
+        bufferVisible.checked = buffer.visible !== false;
+        bufferVisible.addEventListener("change", () => {
+          this.updateBuffer(key, { visible: bufferVisible.checked });
+        });
+        bufferConfig.appendChild(bufferVisible);
+
+        const localBufferVisible = document.createElement("input");
+        localBufferVisible.type = "checkbox";
+        localBufferVisible.checked =
+          this.options?.localBufferOption?.[key]?.visible !== false;
+        localBufferVisible.addEventListener("change", () => {
+          this.update({
+            localBufferOption: {
+              ...this.options.localBufferOption,
+              [key]: { visible: localBufferVisible.checked },
+            },
+          });
+        });
+        bufferConfig.appendChild(localBufferVisible);
+
+        const bufferVisibleLabel = document.createElement("label");
+        bufferVisibleLabel.innerText = "Visible";
+        bufferConfig.appendChild(bufferVisibleLabel);
+
+        configPanel.appendChild(bufferConfig);
+      });
+
+      /**
+       * Append elements to the overlay
+       */
       overlay.appendChild(configPanel);
       configPanel.appendChild(closeButton);
       configPanel.appendChild(axisConfig);
