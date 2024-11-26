@@ -130,6 +130,11 @@ export class MocPlot {
       if (this.bounds.x.max === undefined) this.bounds.x.max = bounds.x.max;
       if (this.bounds.y.min === undefined) this.bounds.y.min = bounds.y.min;
       if (this.bounds.y.max === undefined) this.bounds.y.max = bounds.y.max;
+    } else {
+      this.bounds = {
+        x: { min: 0, max: this.canvas.width },
+        y: { min: 0, max: this.canvas.height },
+      };
     }
 
     /**
@@ -519,7 +524,7 @@ export class MocPlot {
     const lines = buffer.lines ?? [];
     const points: BufferPoint[] = buffer.points ?? [];
     const parametrics = buffer.parametrics ?? [];
-    
+
     const ctx = this.ctx as CanvasRenderingContext2D;
     ctx.save();
 

@@ -1,5 +1,5 @@
 {
-  "name": "plot",
+  "name": "moc-plot",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
