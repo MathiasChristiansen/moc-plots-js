@@ -515,12 +515,11 @@ export class MocPlot {
       this.options?.localBufferOption?.[key]?.visible === false
     )
       return;
-    const data = buffer.data;
-    const lines = buffer.lines;
-    const points: BufferPoint[] = buffer.points;
-    const parametrics = buffer.parametrics;
-    if (!data || data.length === 0) return;
-
+    const data = buffer.data ?? [];
+    const lines = buffer.lines ?? [];
+    const points: BufferPoint[] = buffer.points ?? [];
+    const parametrics = buffer.parametrics ?? [];
+    
     const ctx = this.ctx as CanvasRenderingContext2D;
     ctx.save();
 
@@ -576,34 +575,37 @@ export class MocPlot {
       scale.y = this.canvas.height / range.y;
     }
 
-    ctx.beginPath();
-    ctx.moveTo(
-      (data[0].x - nullPosition.x - bounds.x.min) * scale.x,
-      this.canvas.height - (data[0].y - nullPosition.y - bounds.y.min) * scale.y
-    );
+    if (data.length > 0) {
+      ctx.beginPath();
+      ctx.moveTo(
+        (data[0].x - nullPosition.x - bounds.x.min) * scale.x,
+        this.canvas.height -
+          (data[0].y - nullPosition.y - bounds.y.min) * scale.y
+      );
 
-    if (buffer.type === "scatter") {
-      for (let point of data) {
-        ctx.beginPath();
-        ctx.arc(
-          (point.x - nullPosition.x - bounds.x.min) * scale.x,
-          this.canvas.height -
-            (point.y - nullPosition.y - bounds.y.min) * scale.y,
-          buffer.point?.size ?? 2,
-          0,
-          2 * Math.PI * scale.x
-        );
-        ctx.fill();
+      if (buffer.type === "scatter") {
+        for (let point of data) {
+          ctx.beginPath();
+          ctx.arc(
+            (point.x - nullPosition.x - bounds.x.min) * scale.x,
+            this.canvas.height -
+              (point.y - nullPosition.y - bounds.y.min) * scale.y,
+            buffer.point?.size ?? 2,
+            0,
+            2 * Math.PI * scale.x
+          );
+          ctx.fill();
+        }
+      } else {
+        for (let i = 1; i < data.length; i++) {
+          ctx.lineTo(
+            (data[i].x - nullPosition.x - bounds.x.min) * scale.x,
+            this.canvas.height -
+              (data[i].y - nullPosition.y - bounds.y.min) * scale.y
+          );
+        }
+        ctx.stroke();
       }
-    } else {
-      for (let i = 1; i < data.length; i++) {
-        ctx.lineTo(
-          (data[i].x - nullPosition.x - bounds.x.min) * scale.x,
-          this.canvas.height -
-            (data[i].y - nullPosition.y - bounds.y.min) * scale.y
-        );
-      }
-      ctx.stroke();
     }
 
     if (lines && Array.isArray(lines)) {
