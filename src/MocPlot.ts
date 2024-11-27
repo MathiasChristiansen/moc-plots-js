@@ -242,26 +242,43 @@ export class MocPlot {
     let yMin = Infinity;
     let yMax = -Infinity;
 
-    for (let buffer of this.buffers.values()) {
+    for (let [key, buffer] of this.buffers.entries()) {
       const data = buffer.data;
-      if (!data || data.length === 0) continue;
+      if (
+        !data ||
+        data.length === 0 ||
+        buffer.visible === false ||
+        this.options?.localBufferOption?.[key]?.visible === false
+      )
+        continue;
 
       const xNull = buffer.null?.x || 0;
       const yNull = buffer.null?.y || 0;
 
-      const xValues = data.map((point) => point.x);
-      const yValues = data.map((point) => point.y);
+      const xValues = data.map((point) => point.x - xNull);
+      const yValues = data.map((point) => point.y - yNull);
 
-      const bufferXMin = Math.min(...xValues, xNull);
-      const bufferXMax = Math.max(...xValues, xNull);
-      const bufferYMin = Math.min(...yValues, yNull);
-      const bufferYMax = Math.max(...yValues, yNull);
+      // const bufferXMin = Math.min(...xValues, xNull);
+      // const bufferXMax = Math.max(...xValues, xNull);
+      // const bufferYMin = Math.min(...yValues, yNull);
+      // const bufferYMax = Math.max(...yValues, yNull);
+      const bufferXMin = Math.min(...xValues);
+      const bufferXMax = Math.max(...xValues);
+      const bufferYMin = Math.min(...yValues);
+      const bufferYMax = Math.max(...yValues);
 
       if (bufferXMin < xMin) xMin = bufferXMin;
       if (bufferXMax > xMax) xMax = bufferXMax;
       if (bufferYMin < yMin) yMin = bufferYMin;
       if (bufferYMax > yMax) yMax = bufferYMax;
     }
+
+    // if (this.normalizeBounds) {
+    //   return {
+    //     x: { min: xMin, max: xMax },
+    //     y: { min: yMin, max: yMax },
+    //   };
+    // }
 
     return {
       x: { min: xMin, max: xMax },
@@ -298,20 +315,13 @@ export class MocPlot {
     // const yMin = this.bounds?.y?.min ?? 0;
     // const xMax = this.bounds?.x?.max ?? this.canvas.width;
     // const yMax = this.bounds?.y?.max ?? this.canvas.height;
-    const bounds = {
-      x: {
-        min: this.bounds?.x?.min || 0,
-        max: this.bounds?.x?.max || this.canvas.width,
-      },
-      y: {
-        min: this.bounds?.y?.min || 0,
-        max: this.bounds?.y?.max || this.canvas.height,
-      },
-    };
+    // this.bounds = this.normalizeBounds ? this.computeBounds() : this.bounds!;
+    if (!this.bounds || this.normalizeBounds)
+      this.bounds = this.computeBounds();
 
     const range = {
-      x: bounds.x.max - bounds.x.min,
-      y: bounds.y.max - bounds.y.min,
+      x: this.bounds.x.max - this.bounds.x.min,
+      y: this.bounds.y.max - this.bounds.y.min,
     };
 
     if (range.x === 0 || range.y === 0) {
@@ -325,14 +335,14 @@ export class MocPlot {
     };
 
     let zeroPosition = {
-      x: (0 - bounds.x.min) * scale.x,
-      y: this.canvas.height - (0 - bounds.y.min) * scale.y,
+      x: (0 - this.bounds.x.min) * scale.x,
+      y: this.canvas.height - (0 - this.bounds.y.min) * scale.y,
     };
 
     this.drawTicks(ctx, {
       axis: "x",
-      min: bounds.x.min,
-      max: bounds.x.max,
+      min: this.bounds.x.min,
+      max: this.bounds.x.max,
       zeroPos: zeroPosition.y,
       scale: scale.x,
       canvasSize: this.canvas.width,
@@ -346,8 +356,8 @@ export class MocPlot {
 
     this.drawTicks(ctx, {
       axis: "y",
-      min: bounds.y.min,
-      max: bounds.y.max,
+      min: this.bounds.y.min,
+      max: this.bounds.y.max,
       zeroPos: zeroPosition.x,
       scale: scale.y,
       canvasSize: this.canvas.height,
@@ -1282,6 +1292,20 @@ export class MocPlot {
       configPanel.style.height = "100%";
       configPanel.style.overflow = "auto";
 
+      // Normalize bounds
+      const normalizeBoundsConfig = document.createElement("div");
+      const normalizeBoundsLabel = document.createElement("label");
+      normalizeBoundsLabel.innerText = "Normalize Bounds";
+      normalizeBoundsConfig.appendChild(normalizeBoundsLabel);
+      const normalizeBoundsCheckbox = document.createElement("input");
+      normalizeBoundsCheckbox.type = "checkbox";
+      normalizeBoundsCheckbox.checked = this.normalizeBounds;
+      normalizeBoundsCheckbox.addEventListener("change", () => {
+        this.update({ normalizeBounds: normalizeBoundsCheckbox.checked });
+      });
+
+      normalizeBoundsConfig.appendChild(normalizeBoundsCheckbox);
+
       const axisConfig = document.createElement("div");
       const axisLabel = document.createElement("label");
       axisLabel.innerText = "Axis Color";
@@ -1383,6 +1407,7 @@ export class MocPlot {
        */
       overlay.appendChild(configPanel);
       configPanel.appendChild(closeButton);
+      configPanel.appendChild(normalizeBoundsConfig);
       configPanel.appendChild(axisConfig);
       configPanel.appendChild(gridConfig);
 
