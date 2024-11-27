@@ -30,6 +30,7 @@ export interface Buffer {
     | any
     | {
         interval?: number;
+        useAnimationFrame?: boolean; // TODO: Implement this, so we can use requestAnimationFrame instead of setInterval
       };
   discardInterval?: NodeJS.Timeout | undefined;
   null?: { x?: number; y?: number };
