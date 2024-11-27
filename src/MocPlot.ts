@@ -548,11 +548,14 @@ export class MocPlot {
       },
     };
     if (this.normalizeBounds) {
+      // TODO: Create new axis rendering function for normalized bounds
       for (let point of data) {
-        if (point.x < bounds.x.min) bounds.x.min = point.x;
-        if (point.x > bounds.x.max) bounds.x.max = point.x;
-        if (point.y < bounds.y.min) bounds.y.min = point.y;
-        if (point.y > bounds.y.max) bounds.y.max = point.y;
+        if (point.x < bounds.x.min + nullPosition.x)
+          bounds.x.min = point.x - nullPosition.x;
+        if (point.x > bounds.x.max + nullPosition.x)
+          bounds.x.max = point.x - nullPosition.x;
+        if (point.y < bounds.y.min + nullPosition.y) bounds.y.min = point.y;
+        if (point.y > bounds.y.max + nullPosition.y) bounds.y.max = point.y;
       }
     }
 
