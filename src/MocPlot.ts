@@ -1,6 +1,12 @@
 import { Buffer, BufferPoint } from "./interfaces/Buffer";
 import { PlotOptions } from "./interfaces/Options";
 
+/**
+ * TODO: Add cleanup, so a destroy function can be called to remove event listeners and clear intervals
+ *       The destructor should also remove the canvas from the parent element.
+ * TODO: Add support for multiple y-axes
+ */
+
 export class MocPlot {
   parent: HTMLElement; // HTML element that contains the plot (usually a <div>)
   buffers: Map<string, Buffer>; // Buffers to plot

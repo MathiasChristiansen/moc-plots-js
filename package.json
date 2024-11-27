@@ -9,6 +9,10 @@
     "build": "tsc",
     "prepublishOnly": "npm run build"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MathiasChristiansen/moc-plots-js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
