@@ -14,7 +14,7 @@
     "url": "git+https://github.com/MathiasChristiansen/moc-plots-js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Mathias Ólavsson Christiansen",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^22.9.3",

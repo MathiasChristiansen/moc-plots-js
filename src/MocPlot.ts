@@ -32,11 +32,45 @@ export class MocPlot {
   constructor(
     parent: HTMLElement,
     buffers: Map<string, Buffer> = new Map<string, Buffer>(),
-    options?: PlotOptions
+    options: Partial<PlotOptions> = {}
   ) {
     this.parent = parent;
     this.buffers = buffers;
-    this.options = options || ({} as any);
+    // this.options = options || ({} as any);
+    this.options = {
+      follow: {
+        enabledDefault: false,
+        interval: 1000,
+        jumpOffsetX: 0,
+        adjustY: "manual",
+        disableOnInteraction: false,
+      },
+      axis: {
+        color: "black",
+        width: 2,
+        font: "12px Arial",
+        tick: {
+          interval: {
+            x: undefined,
+            y: undefined,
+          },
+          width: 2,
+        },
+      },
+      config: {
+        enabled: true,
+      },
+      function: {
+        stepScalar: 1,
+      },
+      grid: {
+        show: true,
+        color: "#e0e0e0",
+      },
+      localBufferOption: {},
+      normalizeBounds: false,
+      ...options,
+    };
 
     /**
      * Defaults
@@ -47,8 +81,8 @@ export class MocPlot {
     // this.options.render = this.options.render ?? {};
     // this.options.render.mode = this.options.render?.mode ?? "auto";
 
-    this.normalizeBounds = this.options.normalizeBounds ?? false;
-    this.bounds = this.options.bounds ?? undefined;
+    this.normalizeBounds = this.options.normalizeBounds;
+    this.bounds = this.options.bounds;
 
     this.followTimer = null;
 
@@ -185,10 +219,7 @@ export class MocPlot {
       clearInterval(this.followTimer);
     }
 
-    this.followTimer = setInterval(
-      followFunc,
-      this.options.follow?.interval || 1000
-    );
+    this.followTimer = setInterval(followFunc, this.options.follow?.interval);
 
     if (this.onFollowStartFunc) {
       this.onFollowStartFunc();
@@ -217,11 +248,10 @@ export class MocPlot {
 
     if (!this.bounds) {
       this.bounds = latestBounds;
-      this.bounds.x.max += this.options?.follow?.jumpOffsetX || 0;
+      this.bounds.x.max += this.options.follow.jumpOffsetX;
     }
 
-    this.bounds.x.max =
-      latestBounds.x.max + (this.options?.follow?.jumpOffsetX || 0);
+    this.bounds.x.max = latestBounds.x.max + this.options?.follow?.jumpOffsetX;
 
     if (this.options?.bounds?.fixedWindowSize) {
       const windowSize = this.options.bounds.fixedWindowSize;
