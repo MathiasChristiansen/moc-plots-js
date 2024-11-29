@@ -46,7 +46,7 @@ export class MocPlot {
         disableOnInteraction: false,
       },
       axis: {
-        color: "black",
+        color: "rgba(100, 100, 100, 0.5)",
         width: 2,
         font: "12px Arial",
         tick: {
@@ -65,7 +65,7 @@ export class MocPlot {
       },
       grid: {
         show: true,
-        color: "#e0e0e0",
+        color: "rgba(100, 100, 100, 0.1)",
       },
       localBufferOption: {},
       normalizeBounds: false,
@@ -468,8 +468,10 @@ export class MocPlot {
 
         // Draw grid line
         if (grid) {
-          ctx.strokeStyle = this.options?.grid?.color || "#e0e0e0";
-          ctx.fillStyle = this.options?.grid?.color || "#e0e0e0";
+          ctx.strokeStyle =
+            this.options?.grid?.color || "rgba(100, 100, 100, 0.1)";
+          ctx.fillStyle =
+            this.options?.grid?.color || "rgba(100, 100, 100, 0.1)";
           ctx.beginPath();
           ctx.moveTo(canvasPosition, 0);
           ctx.lineTo(canvasPosition, this.canvas.height);
@@ -477,8 +479,9 @@ export class MocPlot {
         }
 
         // Reset stroke style for ticks
-        ctx.strokeStyle = this.options?.axis?.color || "#333";
-        ctx.fillStyle = this.options?.axis?.color || "#333";
+        ctx.strokeStyle =
+          this.options?.axis?.color || "rgba(100, 100, 100, 0.1)";
+        ctx.fillStyle = this.options?.axis?.color || "rgba(100, 100, 100, 0.1)";
 
         // Draw tick
         ctx.beginPath();
@@ -492,7 +495,7 @@ export class MocPlot {
         ctx.lineWidth = this.options?.axis?.width ?? 1;
 
         // Draw label
-        ctx.fillStyle = this.options?.axis?.color || "#333";
+        ctx.fillStyle = this.options?.axis?.color || "rgba(100, 100, 100, 0.1)";
         ctx.fillText(value.toFixed(2), canvasPosition, labelPosition);
       } else if (axis === "y") {
         canvasPosition = this.canvas.height - pos;
@@ -502,8 +505,10 @@ export class MocPlot {
 
         // Draw grid line
         if (grid) {
-          ctx.strokeStyle = this.options?.grid?.color || "#e0e0e0";
-          ctx.fillStyle = this.options?.grid?.color || "#e0e0e0";
+          ctx.strokeStyle =
+            this.options?.grid?.color || "rgba(100, 100, 100, 0.1)";
+          ctx.fillStyle =
+            this.options?.grid?.color || "rgba(100, 100, 100, 0.1)";
           ctx.beginPath();
           ctx.moveTo(0, canvasPosition);
           ctx.lineTo(this.canvas.width, canvasPosition);
@@ -511,8 +516,9 @@ export class MocPlot {
         }
 
         // Reset stroke style for ticks
-        ctx.strokeStyle = this.options?.axis?.color || "#333";
-        ctx.fillStyle = this.options?.axis?.color || "#333";
+        ctx.strokeStyle =
+          this.options?.axis?.color || "rgba(100, 100, 100, 0.1)";
+        ctx.fillStyle = this.options?.axis?.color || "rgba(100, 100, 100, 0.1)";
 
         // Draw tick
         ctx.beginPath();
@@ -525,7 +531,7 @@ export class MocPlot {
         ctx.lineWidth = this.options?.axis?.width ?? 1;
 
         // Draw label
-        ctx.fillStyle = this.options?.axis?.color || "#333";
+        ctx.fillStyle = this.options?.axis?.color || "rgba(100, 100, 100, 0.1)";
         ctx.fillText(value.toFixed(2), labelPosition, canvasPosition);
       }
     }
@@ -651,32 +657,41 @@ export class MocPlot {
           ctx.fill();
         }
       } else if (buffer.type === "area") {
-        // let adjustedData = [];
         let xValues = [];
         let yValues = [];
-        const zeroPositionY = this.canvas.height - (0 - bounds.y.min) * scale.y;
+
+        // Calculate the zero position in canvas coordinates
+        const zeroPositionY =
+          this.canvas.height - (nullPosition.y - bounds.y.min) * scale.y;
+
+        // Process the first data point
         xValues.push((data[0].x - nullPosition.x - bounds.x.min) * scale.x);
-        yValues.push((data[0].y - nullPosition.y - bounds.y.min) * scale.y);
-        ctx.moveTo(xValues[0], zeroPositionY);
-        for (let i = 0; i < data.length; i++) {
-          xValues.push((data[i].x - nullPosition.x - bounds.x.min) * scale.x);
-          yValues.push(
+        yValues.push(
+          this.canvas.height -
+            (data[0].y - nullPosition.y - bounds.y.min) * scale.y
+        );
+
+        ctx.beginPath();
+        ctx.moveTo(xValues[0], yValues[0]); // Move to the first point
+
+        // Process remaining data points
+        for (let i = 1; i < data.length; i++) {
+          const xValue = (data[i].x - nullPosition.x - bounds.x.min) * scale.x;
+          const yValue =
             this.canvas.height -
-              (data[i].y - nullPosition.y - bounds.y.min) * scale.y
-          );
-          ctx.lineTo(
-            (data[i].x - nullPosition.x - bounds.x.min) * scale.x,
-            this.canvas.height -
-              (data[i].y - nullPosition.y - bounds.y.min) * scale.y
-          );
+            (data[i].y - nullPosition.y - bounds.y.min) * scale.y;
+
+          xValues.push(xValue);
+          yValues.push(yValue);
+
+          ctx.lineTo(xValue, yValue);
         }
 
-        // adjustedData.forEach((point, index) => {
-        //   ctx.lineTo(point.x, point.y);
-        // });
+        // Close the path for the filled area
+        ctx.lineTo(xValues[xValues.length - 1], zeroPositionY); // Line to the zero line (end of xValues)
+        ctx.lineTo(xValues[0], zeroPositionY); // Line back to the zero line (start of xValues)
 
-        ctx.lineTo(xValues[xValues.length - 1], zeroPositionY);
-
+        // Create and apply gradient
         const gradient = ctx.createLinearGradient(
           0,
           Math.min(...yValues),
@@ -685,22 +700,22 @@ export class MocPlot {
         );
         gradient.addColorStop(
           0,
-          buffer.area?.gradient?.start ?? "rgba(0, 0, 255, 0.5)"
+          buffer.area?.gradient?.start ?? "rgba(0, 0, 255, 0)"
         );
         gradient.addColorStop(
           1,
-          buffer.area?.gradient?.end ?? "rgba(0, 0, 255, 0)"
+          buffer.area?.gradient?.end ?? "rgba(0, 0, 255, 0.5)"
         );
 
         ctx.fillStyle = gradient;
         ctx.fill();
 
+        // Draw the outline of the area
         ctx.beginPath();
-        // ctx.moveTo(xValues[0], zeroPositionY * scale.y);
-        ctx.moveTo(xValues[0], yValues[4]);
+        ctx.moveTo(xValues[0], zeroPositionY); // Start from the zero line
 
-        for (let i = 2; i < xValues.length; i++) {
-          ctx.lineTo(xValues[i], yValues[i]);
+        for (let i = 0; i < xValues.length; i++) {
+          ctx.lineTo(xValues[i], yValues[i]); // Draw lines to data points
         }
 
         ctx.strokeStyle = buffer.color || "black";
@@ -1485,6 +1500,42 @@ export class MocPlot {
             },
           });
         });
+
+        const dataTypesElement = document.createElement("div");
+        dataTypesElement.style.marginTop = "8px";
+        dataTypesElement.style.marginBottom = "8px";
+        dataTypesElement.style.paddingTop = "8px";
+        dataTypesElement.style.paddingBottom = "8px";
+        dataTypesElement.style.border = "1px solid #f0f0f0";
+
+        const dataTypesLabel = document.createElement("label");
+        dataTypesLabel.innerText = "Data Types";
+        dataTypesElement.appendChild(dataTypesLabel);
+
+        ["scatter", "line", "area"].forEach((type: any) => {
+          const typeElement = document.createElement("div");
+          const typeLabel = document.createElement("label");
+          typeLabel.innerText = type;
+          typeElement.appendChild(typeLabel);
+          const typeCheckbox = document.createElement("button");
+          typeCheckbox.classList.add(`data-type-button-${key}`);
+          typeCheckbox.innerText = buffer.type === type ? "✓" : " ";
+          typeCheckbox.style.padding = "4px";
+          typeCheckbox.style.border = "1px solid #f0f0f0";
+          typeCheckbox.style.borderRadius = "2px";
+          typeCheckbox.style.cursor = "pointer";
+          typeCheckbox.addEventListener("click", () => {
+            const els = document.querySelectorAll(`.data-type-button-${key}`);
+            els.forEach((el) => (el.innerHTML = " "));
+            this.updateBuffer(key, { type });
+            typeCheckbox.innerHTML = "✓";
+          });
+          typeElement.appendChild(typeCheckbox);
+          dataTypesElement.appendChild(typeElement);
+        });
+
+        bufferConfig.appendChild(dataTypesElement);
+
         bufferConfig.appendChild(localBufferVisible);
 
         const bufferVisibleLabel = document.createElement("label");
