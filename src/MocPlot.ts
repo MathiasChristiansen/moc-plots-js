@@ -650,6 +650,62 @@ export class MocPlot {
           );
           ctx.fill();
         }
+      } else if (buffer.type === "area") {
+        // let adjustedData = [];
+        let xValues = [];
+        let yValues = [];
+        const zeroPositionY = this.canvas.height - (0 - bounds.y.min) * scale.y;
+        xValues.push((data[0].x - nullPosition.x - bounds.x.min) * scale.x);
+        yValues.push((data[0].y - nullPosition.y - bounds.y.min) * scale.y);
+        ctx.moveTo(xValues[0], zeroPositionY);
+        for (let i = 0; i < data.length; i++) {
+          xValues.push((data[i].x - nullPosition.x - bounds.x.min) * scale.x);
+          yValues.push(
+            this.canvas.height -
+              (data[i].y - nullPosition.y - bounds.y.min) * scale.y
+          );
+          ctx.lineTo(
+            (data[i].x - nullPosition.x - bounds.x.min) * scale.x,
+            this.canvas.height -
+              (data[i].y - nullPosition.y - bounds.y.min) * scale.y
+          );
+        }
+
+        // adjustedData.forEach((point, index) => {
+        //   ctx.lineTo(point.x, point.y);
+        // });
+
+        ctx.lineTo(xValues[xValues.length - 1], zeroPositionY);
+
+        const gradient = ctx.createLinearGradient(
+          0,
+          Math.min(...yValues),
+          0,
+          Math.max(...yValues)
+        );
+        gradient.addColorStop(
+          0,
+          buffer.area?.gradient?.start ?? "rgba(0, 0, 255, 0.5)"
+        );
+        gradient.addColorStop(
+          1,
+          buffer.area?.gradient?.end ?? "rgba(0, 0, 255, 0)"
+        );
+
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        ctx.beginPath();
+        // ctx.moveTo(xValues[0], zeroPositionY * scale.y);
+        ctx.moveTo(xValues[0], yValues[4]);
+
+        for (let i = 2; i < xValues.length; i++) {
+          ctx.lineTo(xValues[i], yValues[i]);
+        }
+
+        ctx.strokeStyle = buffer.color || "black";
+        ctx.lineWidth = buffer.line?.width || 2;
+        ctx.stroke();
       } else {
         for (let i = 1; i < data.length; i++) {
           ctx.lineTo(

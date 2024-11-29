@@ -9,7 +9,7 @@ export interface Buffer {
   points: BufferPoint[];
   parametrics?: BufferParametricFunction[];
   point?: { size?: number; shape?: "circle" | "square" };
-  area?: { fillOpacity?: number };
+  area?: { fillOpacity?: number; gradient?: { start?: string; end?: string } };
   bar?: { width?: number };
   stack?: string;
   axis?: string;
