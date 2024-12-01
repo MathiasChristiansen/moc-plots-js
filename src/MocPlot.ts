@@ -1519,14 +1519,14 @@ export class MocPlot {
           typeElement.appendChild(typeLabel);
           const typeCheckbox = document.createElement("button");
           typeCheckbox.classList.add(`data-type-button-${key}`);
-          typeCheckbox.innerText = buffer.type === type ? "✓" : " ";
+          typeCheckbox.innerText = buffer.type === type ? "✓" : "X";
           typeCheckbox.style.padding = "4px";
           typeCheckbox.style.border = "1px solid #f0f0f0";
           typeCheckbox.style.borderRadius = "2px";
           typeCheckbox.style.cursor = "pointer";
           typeCheckbox.addEventListener("click", () => {
             const els = document.querySelectorAll(`.data-type-button-${key}`);
-            els.forEach((el) => (el.innerHTML = " "));
+            els.forEach((el) => (el.innerHTML = "X"));
             this.updateBuffer(key, { type });
             typeCheckbox.innerHTML = "✓";
           });
