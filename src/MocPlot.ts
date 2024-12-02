@@ -528,7 +528,8 @@ export class MocPlot {
               : tickLength + tickLabelOffset);
 
           // Ensure labels are within canvas bounds
-          const textWidth = ctx.measureText(value.toFixed(2)).width + tickLabelOffset;
+          const textWidth =
+            ctx.measureText(value.toFixed(2)).width + tickLabelOffset;
           let adjustedLabelX = labelX;
 
           if (placement === "left" && labelX - textWidth < 0) {
@@ -578,7 +579,8 @@ export class MocPlot {
             yPos -
             (placement === "top"
               ? -tickLength - tickLabelOffset
-              : tickLength + tickLabelOffset) * 1.5;
+              : tickLength + tickLabelOffset) *
+              1.5;
 
           // Adjust text alignment for edge labels
           const textWidth = ctx.measureText(value.toFixed(2)).width;
@@ -1769,6 +1771,43 @@ export class MocPlot {
 
         configPanel.appendChild(bufferConfig);
       });
+
+      const boundsInputs = document.createElement("div");
+      boundsInputs.style.marginTop = "16px";
+      boundsInputs.style.marginBottom = "16px";
+      boundsInputs.style.paddingTop = "16px";
+      boundsInputs.style.paddingBottom = "16px";
+      boundsInputs.style.border = "1px solid #f0f0f0";
+
+      const boundsLabel = document.createElement("label");
+      boundsLabel.innerText = "Bounds";
+      boundsInputs.appendChild(boundsLabel);
+
+      ["x.min", "x.max", "y.min", "y.max"].forEach((key) => {
+        const label = document.createElement("label");
+        label.innerText = key;
+        boundsInputs.appendChild(label);
+        const input = document.createElement("input");
+        input.type = "number";
+        input.step = "0.1";
+        const keys = key.split(".");
+        input.value = (this.bounds as any)?.[keys[0]][keys[1]] ?? 0;
+        input.addEventListener("input", () => {
+          const value = parseFloat(input.value);
+          if (isNaN(value)) return;
+          if (keys[1] === "min") {
+            if (value >= (this.bounds as any)[keys[0]].max) return;
+          } else {
+            if (value <= (this.bounds as any)[keys[0]].min) return;
+          }
+          (this.bounds as any)[keys[0]][keys[1]] = value;
+          this.resizeCanvas();
+          this.render();
+        });
+        boundsInputs.appendChild(input);
+      });
+
+      configPanel.appendChild(boundsInputs);
 
       /**
        * Append elements to the overlay
