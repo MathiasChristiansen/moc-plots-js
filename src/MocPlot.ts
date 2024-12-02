@@ -1,5 +1,6 @@
 import { Buffer, BufferPoint } from "./interfaces/Buffer";
 import { PlotOptions } from "./interfaces/Options";
+// import { AnimationManager } from "./animation/AnimationManager.js";
 
 /**
  * TODO: Add cleanup, so a destroy function can be called to remove event listeners and clear intervals
@@ -8,6 +9,8 @@ import { PlotOptions } from "./interfaces/Options";
  */
 
 export class MocPlot {
+  // private animationManager: AnimationManager;
+
   parent: HTMLElement; // HTML element that contains the plot (usually a <div>)
   buffers: Map<string, Buffer>; // Buffers to plot
   options: PlotOptions; // Plot options and configuration
@@ -71,6 +74,11 @@ export class MocPlot {
       normalizeBounds: false,
       ...options,
     };
+
+    /**
+     * TODO: Maybe implement, or find better solution
+     */
+    // this.animationManager = new AnimationManager();
 
     /**
      * Defaults
@@ -321,6 +329,27 @@ export class MocPlot {
       y: { min: yMin, max: yMax },
     };
   }
+
+  // animateBounds(
+  //   targetBounds: {
+  //     x: { min: number; max: number };
+  //     y: { min: number; max: number };
+  //   },
+  //   duration = 500
+  // ) {
+  //   const startBounds = { ...this.bounds };
+  //   this.animationManager.start(
+  //     "bounds",
+  //     startBounds,
+  //     targetBounds,
+  //     duration,
+  //     this.options.animation?.easingFunction || ((t) => t), // Default linear easing
+  //     (interpolatedBounds) => {
+  //       this.bounds = interpolatedBounds;
+  //       this.render(); // Trigger re-render with updated bounds
+  //     }
+  //   );
+  // }
 
   /**
    * Render the plot.
@@ -721,6 +750,50 @@ export class MocPlot {
         ctx.strokeStyle = buffer.color || "black";
         ctx.lineWidth = buffer.line?.width || 2;
         ctx.stroke();
+      } else if (buffer.type === "bar") {
+        // Sort data by x-value to calculate spacing correctly
+        const sortedData = [...data].sort((a, b) => a.x - b.x);
+
+        // Calculate the spacing between bars based on x-values
+        const barSpacing =
+          sortedData.length > 1
+            ? (sortedData[1].x - sortedData[0].x) * scale.x
+            : this.canvas.width / data.length; // Fallback if only one data point
+
+        const barWidth = barSpacing * (buffer.bar?.widthFactor ?? 0.8); // Bar width as a percentage of spacing
+        const barGap = buffer.bar?.gap ?? 1; // Optional gap between bars
+
+        // Calculate the zero position on the Y-axis
+        const zeroPositionY =
+          this.canvas.height - (0 - bounds.y.min + nullPosition.y) * scale.y;
+
+        for (let i = 0; i < sortedData.length; i++) {
+          const xValue =
+            (sortedData[i].x - nullPosition.x - bounds.x.min) * scale.x;
+          const yValue =
+            (sortedData[i].y - nullPosition.y - bounds.y.min) * scale.y;
+
+          // Determine the bar height and direction based on the data point's value
+          const barHeight = Math.abs(
+            this.canvas.height - zeroPositionY - yValue
+          );
+          const barX = xValue - barWidth / 2; // Center align the bar
+
+          // Determine bar Y position based on whether value is above or below the zero line
+          const barY =
+            sortedData[i].y >= 0
+              ? zeroPositionY - barHeight // Above zero line
+              : zeroPositionY; // Below zero line
+
+          // Draw the bar
+          ctx.fillStyle = buffer.color || "black";
+          ctx.fillRect(
+            barX,
+            barY,
+            barWidth - barGap, // Width adjusted for gap
+            barHeight
+          );
+        }
       } else {
         for (let i = 1; i < data.length; i++) {
           ctx.lineTo(

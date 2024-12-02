@@ -1,4 +1,11 @@
+export interface AnimationOptions {
+  enabled: boolean;
+  duration: number;
+  easingFunction: (t: number) => number;
+}
+
 export interface PlotOptions {
+  animation?: AnimationOptions;
   normalizeBounds: boolean;
   bounds?: {
     x: { min: number; max: number };
