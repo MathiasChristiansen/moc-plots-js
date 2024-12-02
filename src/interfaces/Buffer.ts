@@ -1,5 +1,6 @@
 export interface Buffer {
   data: Array<{ x: number; y: number }>;
+  smooth?: boolean;
   color?: string;
   label?: string;
   type?: "line" | "scatter" | "bar" | "area";

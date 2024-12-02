@@ -1935,3 +1935,28 @@ function calculateTickValues(
   }
   return ticks;
 }
+
+// Helper function for Catmull-Rom spline control points
+function getControlPoints(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  t = 0.5
+) {
+  const d01 = Math.hypot(x1 - x0, y1 - y0);
+  const d12 = Math.hypot(x2 - x1, y2 - y1);
+
+  const fa = (t * d01) / (d01 + d12);
+  const fb = (t * d12) / (d01 + d12);
+
+  const p1x = x1 - fa * (x2 - x0);
+  const p1y = y1 - fa * (y2 - y0);
+
+  const p2x = x1 + fb * (x2 - x0);
+  const p2y = y1 + fb * (y2 - y0);
+
+  return { cp1x: p1x, cp1y: p1y, cp2x: p2x, cp2y: p2y };
+}
