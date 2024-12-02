@@ -361,6 +361,7 @@ export class MocPlot {
 
     for (let [key, buffer] of this.buffers.entries()) {
       this.drawBuffer(key, buffer);
+      this.drawBufferAxis(buffer, key);
     }
   }
 
@@ -454,6 +455,157 @@ export class MocPlot {
       ctx.lineTo(zeroPosition.x, this.canvas.height);
       ctx.stroke();
     }
+
+    ctx.restore();
+  }
+
+  drawBufferAxis(buffer: Buffer, key: string): void {
+    if (!buffer.axisVisible || !buffer.axisPlacement) return;
+
+    const ctx = this.ctx as CanvasRenderingContext2D;
+    const axisPlacements = buffer.axisPlacement; // e.g., ["left", "bottom"]
+    const axisColor = buffer.axisColor || this.options.axis.color || "black";
+    const axisWidth = buffer.axisWidth || this.options.axis.width || 2;
+    const tickCount = buffer.tickCount || 10; // Desired number of ticks
+    const tickLength = buffer.tickLength || 5;
+    const tickLabelOffset = buffer.tickLabelOffset || 8;
+
+    // Bounds and scaling
+    const bounds = this.bounds || this.computeBounds();
+    const xRange = bounds.x.max - bounds.x.min;
+    const yRange = bounds.y.max - bounds.y.min;
+
+    const scale = {
+      x: this.canvas.width / xRange,
+      y: this.canvas.height / yRange,
+    };
+
+    // Calculate tick values using the nice number algorithm
+    const xTicks = calculateTickValues(bounds.x.min, bounds.x.max, tickCount);
+    const yTicks = calculateTickValues(bounds.y.min, bounds.y.max, tickCount);
+
+    ctx.save();
+    ctx.strokeStyle = axisColor;
+    ctx.lineWidth = axisWidth;
+    ctx.font = "10px Arial";
+    ctx.fillStyle = axisColor;
+
+    axisPlacements.forEach((placement) => {
+      if (placement === "left" || placement === "right") {
+        const xPos = placement === "left" ? 0 : this.canvas.width;
+
+        // Align text for vertical axes
+        ctx.textBaseline = "middle";
+
+        // Draw vertical axis line
+        ctx.beginPath();
+        ctx.moveTo(xPos, 0);
+        ctx.lineTo(xPos, this.canvas.height);
+        ctx.stroke();
+
+        // Render Y ticks and labels
+        yTicks.forEach((value) => {
+          const yCanvas = this.canvas.height - (value - bounds.y.min) * scale.y;
+
+          // Only draw ticks/labels if within canvas bounds
+          if (yCanvas < 0 || yCanvas > this.canvas.height) return;
+
+          const tickStart = xPos;
+          const tickEnd =
+            xPos - (placement === "left" ? -tickLength : tickLength);
+
+          // Draw tick
+          ctx.beginPath();
+          ctx.moveTo(tickStart, yCanvas);
+          ctx.lineTo(tickEnd, yCanvas);
+          ctx.stroke();
+
+          // Adjust label position
+          const labelX =
+            xPos +
+            (placement === "left"
+              ? -tickLength - tickLabelOffset
+              : tickLength + tickLabelOffset);
+
+          // Ensure labels are within canvas bounds
+          const textWidth = ctx.measureText(value.toFixed(2)).width + tickLabelOffset;
+          let adjustedLabelX = labelX;
+
+          if (placement === "left" && labelX - textWidth < 0) {
+            adjustedLabelX = textWidth;
+            ctx.textAlign = "right";
+          } else if (
+            placement === "right" &&
+            labelX + textWidth > this.canvas.width
+          ) {
+            adjustedLabelX = this.canvas.width - textWidth;
+            ctx.textAlign = "left";
+          } else {
+            ctx.textAlign = placement === "left" ? "right" : "left";
+          }
+
+          // Draw label
+          ctx.fillText(value.toFixed(2), adjustedLabelX, yCanvas);
+        });
+      } else if (placement === "top" || placement === "bottom") {
+        const yPos = placement === "top" ? 0 : this.canvas.height;
+
+        // Draw horizontal axis line
+        ctx.beginPath();
+        ctx.moveTo(0, yPos);
+        ctx.lineTo(this.canvas.width, yPos);
+        ctx.stroke();
+
+        // Render X ticks and labels
+        xTicks.forEach((value, index) => {
+          const xCanvas = (value - bounds.x.min) * scale.x;
+
+          // Only draw ticks/labels if within canvas bounds
+          if (xCanvas < 0 || xCanvas > this.canvas.width) return;
+
+          const tickStart = yPos;
+          const tickEnd =
+            yPos - (placement === "top" ? -tickLength : tickLength);
+
+          // Draw tick
+          ctx.beginPath();
+          ctx.moveTo(xCanvas, tickStart);
+          ctx.lineTo(xCanvas, tickEnd);
+          ctx.stroke();
+
+          // Adjust label position
+          const labelY =
+            yPos -
+            (placement === "top"
+              ? -tickLength - tickLabelOffset
+              : tickLength + tickLabelOffset) * 1.5;
+
+          // Adjust text alignment for edge labels
+          const textWidth = ctx.measureText(value.toFixed(2)).width;
+          let textAlign = "center";
+          let adjustedXCanvas = xCanvas;
+
+          if (index === 0 && xCanvas - textWidth / 2 < 0) {
+            textAlign = "left";
+            adjustedXCanvas = Math.max(xCanvas, 0);
+          } else if (
+            index === xTicks.length - 1 &&
+            xCanvas + textWidth / 2 > this.canvas.width
+          ) {
+            textAlign = "right";
+            adjustedXCanvas = Math.min(xCanvas, this.canvas.width);
+          } else {
+            textAlign = "center";
+          }
+
+          ctx.textAlign = textAlign as CanvasTextAlign;
+          ctx.textBaseline = placement === "top" ? "bottom" : "top";
+
+          // Draw label
+          ctx.fillText(value.toFixed(2), adjustedXCanvas, labelY);
+        });
+      }
+    });
 
     ctx.restore();
   }
@@ -1696,4 +1848,51 @@ export class MocPlot {
       plotOffsets,
     };
   }
+}
+
+function niceNum(range: number, round: boolean): number {
+  const exponent = Math.floor(Math.log10(range));
+  const fraction = range / Math.pow(10, exponent);
+  let niceFraction;
+
+  if (round) {
+    if (fraction < 1.5) {
+      niceFraction = 1;
+    } else if (fraction < 3) {
+      niceFraction = 2;
+    } else if (fraction < 7) {
+      niceFraction = 5;
+    } else {
+      niceFraction = 10;
+    }
+  } else {
+    if (fraction <= 1) {
+      niceFraction = 1;
+    } else if (fraction <= 2) {
+      niceFraction = 2;
+    } else if (fraction <= 5) {
+      niceFraction = 5;
+    } else {
+      niceFraction = 10;
+    }
+  }
+
+  return niceFraction * Math.pow(10, exponent);
+}
+
+function calculateTickValues(
+  min: number,
+  max: number,
+  tickCount: number
+): number[] {
+  const range = niceNum(max - min, false);
+  const tickSpacing = niceNum(range / (tickCount - 1), true);
+  const niceMin = Math.floor(min / tickSpacing) * tickSpacing;
+  const niceMax = Math.ceil(max / tickSpacing) * tickSpacing;
+
+  const ticks = [];
+  for (let x = niceMin; x <= niceMax; x += tickSpacing) {
+    ticks.push(x);
+  }
+  return ticks;
 }

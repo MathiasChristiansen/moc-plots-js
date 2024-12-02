@@ -26,6 +26,13 @@ export interface Buffer {
   subtitle?: { text?: string; style?: object };
   unit?: { text?: string; style?: object };
   maxDataLength?: number;
+  axisPlacement?: ("left" | "right" | "top" | "bottom")[];
+  axisVisible?: boolean;
+  axisColor?: string;
+  axisWidth?: number;
+  tickCount?: number;
+  tickLength?: number;
+  tickLabelOffset?: number;
   discardOptions?:
     | any
     | {
